@@ -1,0 +1,11 @@
+{
+  "library_dir": "epubs",
+  "original": {
+    "dir": "original",
+    "label": "Original"
+  },
+  "integrate_optimized": {
+    "dir": "moz_integrated",
+    "label": "Moz-Integrated"
+  }
+}
