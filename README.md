@@ -26,6 +26,9 @@ epub-comparator/
 ├── epub_comparator.py       # CLI entry point
 ├── epub_dirs.json           # directory and label configuration
 ├── requirements.txt
+├── epubs/                   # place your EPUB version folders here
+│   ├── original/            #   original .epub files
+│   └── optimized/           #   optimized .epub files (configurable)
 └── epub_comparator/
     ├── models.py            # dataclasses: EpubSource, BookTriplet, ImageInfo, etc.
     ├── epub_reader.py       # unified ZIP wrapper + OPF/NCX/manifest parsing

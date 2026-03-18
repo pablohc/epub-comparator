@@ -10,8 +10,11 @@ venv/
 report.html
 report.json
 
-# EPUB library (not tracked)
-epubs/
+# EPUB library — ignore contents, keep folder structure
+epubs/**
+!epubs/.gitkeep
+!epubs/*/
+!epubs/*/.gitkeep
 
 # OS
 .DS_Store
