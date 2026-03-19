@@ -454,6 +454,154 @@ def export_json(data: object, output_path: Path):
 
 
 # ---------------------------------------------------------------------------
+# PR summary JSON
+# ---------------------------------------------------------------------------
+
+def build_pr_summary(
+    triplets: list,
+    val_grouped: list[list],
+    diff_results: list,
+) -> dict:
+    """Build a compact, agent-friendly JSON for PR description generation.
+
+    Structure integrity logic:
+      - Collect all (rule, message) pairs present in the original version.
+      - For each optimized version, any issue NOT in that set is "new damage".
+      - If no new issues → structure_integrity = "preserved"
+      - Otherwise      → structure_integrity = "issues_introduced"
+    """
+    from datetime import datetime, timezone
+
+    # Index diffs by (canonical_name, compared_label.value)
+    diff_index: dict[tuple, object] = {
+        (dr.triplet.canonical_name, dr.compared_label.value): dr
+        for dr in diff_results
+    }
+
+    books = []
+    total_saved: dict[str, float] = {}   # label → cumulative saved bytes
+
+    for tri, book_val in zip(triplets, val_grouped):
+        # Build original issue fingerprints
+        orig_fingerprints: set[tuple[str, str]] = set()
+        for vr in book_val:
+            if vr.source.label == VersionLabel.ORIGINAL:
+                orig_fingerprints = {(i.rule, i.message) for i in vr.issues}
+                break
+
+        versions_out = {}
+        for vr in book_val:
+            lbl = vr.source.label
+            if lbl == VersionLabel.ORIGINAL:
+                continue
+
+            dr = diff_index.get((tri.canonical_name, lbl.value))
+            orig_bytes = dr.container_sizes.get(VersionLabel.ORIGINAL.value) if dr else None
+            cmp_bytes  = dr.container_sizes.get(lbl.value) if dr else None
+
+            size_delta_bytes = (cmp_bytes - orig_bytes) if (orig_bytes and cmp_bytes) else None
+            size_delta_pct   = round(size_delta_bytes / orig_bytes * 100, 1) if (orig_bytes and size_delta_bytes is not None) else None
+
+            # Images summary
+            images_changed = images_format_changed = images_added = images_removed = 0
+            images_detail = []
+            if dr:
+                for d in dr.image_diffs:
+                    if d.kind.value == "format_changed":
+                        images_format_changed += 1
+                    elif d.kind.value == "changed":
+                        images_changed += 1
+                    elif d.kind.value == "added":
+                        images_added += 1
+                    elif d.kind.value == "removed":
+                        images_removed += 1
+
+                    orig_kb  = round(d.original.uncompressed_size / 1024, 1) if d.original else None
+                    cmp_kb   = round(d.compared.uncompressed_size / 1024, 1) if d.compared else None
+                    delta_kb = round((cmp_kb - orig_kb), 1) if (orig_kb is not None and cmp_kb is not None) else None
+                    images_detail.append({
+                        "stem": d.stem,
+                        "change": d.kind.value,
+                        "original_format":    d.original.extension.lstrip(".") if d.original else None,
+                        "optimized_format":   d.compared.extension.lstrip(".")  if d.compared else None,
+                        "original_dims":      d.original.dimensions if d.original else None,
+                        "optimized_dims":     d.compared.dimensions  if d.compared else None,
+                        "original_size_kb":   orig_kb,
+                        "optimized_size_kb":  cmp_kb,
+                        "size_delta_kb":      delta_kb,
+                    })
+
+            # Structure integrity
+            new_issues = [
+                {"rule": i.rule, "status": i.status.value, "message": i.message}
+                for i in vr.issues
+                if (i.rule, i.message) not in orig_fingerprints
+            ]
+            integrity = "preserved" if not new_issues else "issues_introduced"
+
+            entry = {
+                "size_original_kb": round(orig_bytes / 1024, 1) if orig_bytes else None,
+                "size_optimized_kb": round(cmp_bytes / 1024, 1) if cmp_bytes else None,
+                "size_delta_kb": round(size_delta_bytes / 1024, 1) if size_delta_bytes is not None else None,
+                "size_delta_pct": size_delta_pct,
+                "images_changed": images_changed,
+                "images_format_changed": images_format_changed,
+                "images_added": images_added,
+                "images_removed": images_removed,
+                "images_detail": images_detail,
+                "structure_integrity": integrity,
+                "new_validation_issues": new_issues,
+            }
+            versions_out[lbl.value] = entry
+
+            # Accumulate totals (only when size data is available)
+            if size_delta_bytes is not None:
+                total_saved[lbl.value] = total_saved.get(lbl.value, 0) + (-size_delta_bytes)
+
+        books.append({"name": tri.canonical_name, "versions": versions_out})
+
+    # Build totals per label
+    totals = {}
+    for lbl_val, saved_bytes in total_saved.items():
+        orig_total = sum(
+            dr.container_sizes.get(VersionLabel.ORIGINAL.value, 0)
+            for dr in diff_results
+            if dr.compared_label.value == lbl_val
+        )
+        totals[lbl_val] = {
+            "total_size_saved_kb": round(saved_bytes / 1024, 1),
+            "total_size_saved_pct": round(saved_bytes / orig_total * 100, 1) if orig_total else None,
+            "books_with_integrity_preserved": sum(
+                1 for b in books
+                if b["versions"].get(lbl_val, {}).get("structure_integrity") == "preserved"
+            ),
+            "books_with_new_issues": sum(
+                1 for b in books
+                if b["versions"].get(lbl_val, {}).get("structure_integrity") == "issues_introduced"
+            ),
+        }
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "books_total": len(books),
+        "totals_by_version": totals,
+        "books": books,
+    }
+
+
+def export_pr_summary(
+    triplets: list,
+    val_grouped: list[list],
+    diff_results: list,
+    output_path: Path,
+):
+    data = build_pr_summary(triplets, val_grouped, diff_results)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"PR summary JSON exported to {output_path}")
+
+
+# ---------------------------------------------------------------------------
 # HTML export
 # ---------------------------------------------------------------------------
 

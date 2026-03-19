@@ -9,6 +9,7 @@ venv/
 # Reports
 report.html
 report.json
+pr_summary.json
 
 # EPUB library — ignore contents, keep folder structure
 epubs/**

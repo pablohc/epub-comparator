@@ -114,6 +114,22 @@ def cmd_report(args):
         }, output_json)
 
 
+def cmd_pr_summary(args):
+    triplets = _load_triplets()
+    output = Path(args.output) if args.output else ROOT / "pr_summary.json"
+
+    val_results = [
+        [validator.validate(src) for src in tri.versions()]
+        for tri in triplets
+    ]
+
+    diff_results = []
+    for tri in triplets:
+        diff_results.extend(differ.diff_all(tri))
+
+    reporter.export_pr_summary(triplets, val_results, diff_results, output)
+
+
 # ---------------------------------------------------------------------------
 # CLI wiring
 # ---------------------------------------------------------------------------
@@ -156,6 +172,10 @@ def build_parser() -> argparse.ArgumentParser:
     rep_p.add_argument("--output", metavar="FILE", help="HTML output path (default: report.html)")
     rep_p.add_argument("--json", metavar="FILE", help="Optional JSON output path")
 
+    # pr-summary
+    pr_p = sub.add_parser("pr-summary", help="Generate a compact JSON for PR description agents")
+    pr_p.add_argument("--output", metavar="FILE", help="JSON output path (default: pr_summary.json)")
+
     return p
 
 
@@ -163,10 +183,11 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
     {
-        "list":     cmd_list,
-        "validate": cmd_validate,
-        "diff":     cmd_diff,
-        "report":   cmd_report,
+        "list":       cmd_list,
+        "validate":   cmd_validate,
+        "diff":       cmd_diff,
+        "report":     cmd_report,
+        "pr-summary": cmd_pr_summary,
     }[args.command](args)
 
 

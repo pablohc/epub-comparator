@@ -48,10 +48,62 @@ _OPT_SUFFIXES = ["_optimized"]
 
 # --- Config loading ------------------------------------------------------------
 
+def _auto_detect_versions(library_base: Path, cfg: dict[str, dict]) -> dict[str, dict]:
+    """If none of the configured version dirs exist, scan library_base for actual
+    subdirectories and map them to version keys by name heuristic.
+
+    Heuristic:
+      - name contains "original"           → original
+      - name contains "web"                → web_optimized
+      - name contains "integrat"           → integrate_optimized
+      - remaining dirs fill remaining keys in declaration order
+    """
+    if not library_base.is_dir():
+        return cfg
+
+    configured_dirs = [library_base / cfg[key]["dir"] for key in cfg]
+    if any(d.is_dir() for d in configured_dirs):
+        return cfg  # at least one configured dir found — respect explicit config
+
+    actual_dirs = sorted(d for d in library_base.iterdir() if d.is_dir())
+    if not actual_dirs:
+        return cfg
+
+    result = {k: dict(v) for k, v in cfg.items()}
+    key_order = list(result.keys())  # ["original", "web_optimized", "integrate_optimized"]
+
+    assigned: dict[str, Path] = {}
+    unassigned: list[Path] = []
+
+    for d in actual_dirs:
+        n = d.name.lower()
+        if "original" in n and "original" not in assigned:
+            assigned["original"] = d
+        elif "web" in n and "web_optimized" not in assigned:
+            assigned["web_optimized"] = d
+        elif "integrat" in n and "integrate_optimized" not in assigned:
+            assigned["integrate_optimized"] = d
+        else:
+            unassigned.append(d)
+
+    # Fill remaining keys with leftover dirs in declaration order
+    for key in key_order:
+        if key not in assigned and unassigned:
+            assigned[key] = unassigned.pop(0)
+
+    for key, d in assigned.items():
+        result[key]["dir"] = d.name
+        result[key]["label"] = d.name.replace("-", " ").replace("_", " ").title()
+
+    return result
+
+
 def load_config(root: Path) -> tuple[Path, dict[str, dict]]:
     """Load epub_dirs.json (if present) and return (library_base, version_cfg).
 
     library_base is the directory that contains the version sub-folders.
+    If no configured directory exists inside library_base, the actual
+    subdirectories are auto-detected and used instead.
     """
     cfg = {k: dict(v) for k, v in _DEFAULTS.items()}
     library_dir = _DEFAULT_LIBRARY_DIR
@@ -67,6 +119,7 @@ def load_config(root: Path) -> tuple[Path, dict[str, dict]]:
         except (json.JSONDecodeError, OSError):
             pass
     library_base = root / library_dir
+    cfg = _auto_detect_versions(library_base, cfg)
     return library_base, cfg
 
 
