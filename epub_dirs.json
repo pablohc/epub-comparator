@@ -4,8 +4,8 @@
     "dir": "original",
     "label": "Original"
   },
-  "integrate_optimized": {
-    "dir": "moz_integrated",
-    "label": "Moz-Integrated"
+  "optimized": {
+    "dir": "optimized",
+    "label": "Optimized"
   }
 }

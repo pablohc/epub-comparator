@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 epub-comparator — Compare EPUB files across ORIGINAL, WEB-OPTIMIZED and
-INTEGRATE-OPTIMIZED versions.
+OPTIMIZED versions.
 
 Usage:
   python epub_comparator.py list
   python epub_comparator.py validate [<book>] [--all] [--errors-only]
-  python epub_comparator.py diff [<book>] [--all] [--detail summary|full] [--version web|integrate|both]
+  python epub_comparator.py diff [<book>] [--all] [--detail summary|full] [--version web|optimized|both]
   python epub_comparator.py report [--output report.html] [--json report.json]
 """
 from __future__ import annotations
@@ -83,8 +83,8 @@ def cmd_diff(args):
         if version_arg in ("web", "both") and tri.web_optimized and tri.original:
             result = differ.diff_pair(tri, VersionLabel.WEB_OPTIMIZED)
             reporter.print_diff(result, detail=detail)
-        if version_arg in ("integrate", "both") and tri.integrate_optimized and tri.original:
-            result = differ.diff_pair(tri, VersionLabel.INTEGRATE_OPTIMIZED)
+        if version_arg in ("optimized", "both") and tri.optimized and tri.original:
+            result = differ.diff_pair(tri, VersionLabel.OPTIMIZED)
             reporter.print_diff(result, detail=detail)
 
 
@@ -137,7 +137,7 @@ def cmd_pr_summary(args):
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="epub_comparator",
-        description="Compare EPUB files across Original / Web-Optimized / Integrate-Optimized versions.",
+        description="Compare EPUB files across Original / Web-Optimized / Optimized versions.",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -162,7 +162,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     diff_p.add_argument(
         "--version",
-        choices=["web", "integrate", "both"],
+        choices=["web", "optimized", "both"],
         default="both",
         help="Which optimized version to compare against (default: both)",
     )

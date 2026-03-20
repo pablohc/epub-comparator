@@ -46,13 +46,13 @@ Create `epub_dirs.json` in the project root to customize directories and labels:
 {
   "library_dir": "epubs",
   "original":            { "dir": "original",      "label": "Original" },
-  "web_optimized":       { "dir": "web-optimized",  "label": "Web" },
-  "integrate_optimized": { "dir": "moz_integrated", "label": "Moz-Integrated" }
+  "web":                 { "dir": "web",  "label": "Web" },
+  "optimized": { "dir": "optimized", "label": "Optimized" }
 }
 ```
 
 - `library_dir` — subdirectory containing all version folders (default: `epubs`)
-- Omit `web_optimized` or `integrate_optimized` to compare only two versions
+- Omit `web_optimized` or `optimized` to compare only two versions
 
 ## Usage
 
@@ -67,7 +67,7 @@ python epub_comparator.py validate --all --errors-only
 # Compare versions (summary or full diff with CSS/XHTML)
 python epub_comparator.py diff "Chandler" --version web
 python epub_comparator.py diff "Dicker" --version both --detail full
-python epub_comparator.py diff --all --version integrate
+python epub_comparator.py diff --all --version optimized
 
 # Generate full HTML report (+ optional JSON)
 python epub_comparator.py report --output report.html --json report.json

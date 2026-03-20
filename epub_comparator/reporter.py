@@ -75,7 +75,7 @@ def _delta_str(a: Optional[int], b: Optional[int]) -> str:
 _ATTR = {
     VersionLabel.ORIGINAL:            "original",
     VersionLabel.WEB_OPTIMIZED:       "web_optimized",
-    VersionLabel.INTEGRATE_OPTIMIZED: "integrate_optimized",
+    VersionLabel.OPTIMIZED:           "optimized",
 }
 
 

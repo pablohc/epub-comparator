@@ -34,7 +34,7 @@ def diff_pair(
     compared_src = (
         triplet.web_optimized
         if compared_label == VersionLabel.WEB_OPTIMIZED
-        else triplet.integrate_optimized
+        else triplet.optimized
     )
 
     result = DiffResult(triplet=triplet, compared_label=compared_label)
@@ -63,12 +63,12 @@ def diff_pair(
 
 
 def diff_all(triplet: BookTriplet) -> list[DiffResult]:
-    """Return diffs vs web-optimized and integrate-optimized."""
+    """Return diffs vs web-optimized and optimized."""
     results = []
     if triplet.web_optimized:
         results.append(diff_pair(triplet, VersionLabel.WEB_OPTIMIZED))
-    if triplet.integrate_optimized:
-        results.append(diff_pair(triplet, VersionLabel.INTEGRATE_OPTIMIZED))
+    if triplet.optimized:
+        results.append(diff_pair(triplet, VersionLabel.OPTIMIZED))
     return results
 
 

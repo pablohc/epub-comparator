@@ -9,7 +9,13 @@ from typing import Optional
 class VersionLabel(str, Enum):
     ORIGINAL = "original"
     WEB_OPTIMIZED = "web-optimized"
-    INTEGRATE_OPTIMIZED = "integrate-optimized"
+    OPTIMIZED = "optimized"
+
+    @classmethod
+    def from_str(cls, value: str) -> "VersionLabel":
+        if value == "optimized":
+            return cls.OPTIMIZED
+        return cls(value)
 
 
 class ValidationStatus(str, Enum):
@@ -44,13 +50,13 @@ class BookTriplet:
     canonical_name: str             # normalised book name used for matching
     original: Optional[EpubSource] = None
     web_optimized: Optional[EpubSource] = None
-    integrate_optimized: Optional[EpubSource] = None
+    optimized: Optional[EpubSource] = None
 
     def versions(self) -> list[EpubSource]:
-        return [v for v in (self.original, self.web_optimized, self.integrate_optimized) if v]
+        return [v for v in (self.original, self.web_optimized, self.optimized) if v]
 
     def is_complete(self) -> bool:
-        return all([self.original, self.web_optimized, self.integrate_optimized])
+        return all([self.original, self.web_optimized, self.optimized])
 
 
 # ---------------------------------------------------------------------------

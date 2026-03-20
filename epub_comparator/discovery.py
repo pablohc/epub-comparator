@@ -6,8 +6,8 @@ project root. Example:
     {
       "library_dir": "epubs",
       "original":           {"dir": "original",   "label": "Original"},
-      "web_optimized":      {"dir": "kindle",     "label": "Kindle"},
-      "integrate_optimized":{"dir": "integrated", "label": "Integrated"}
+      "web":                {"dir": "kindle",     "label": "Kindle"},
+      "optimized":          {"dir": "optimized",   "label": "Optimized"}
     }
 
 - "library_dir": subdirectory under the project root that contains all version
@@ -28,14 +28,14 @@ _DEFAULT_LIBRARY_DIR = "epubs"
 
 _DEFAULTS: dict[str, dict] = {
     "original":            {"dir": "original_epubs",           "label": "Original"},
-    "web_optimized":       {"dir": "web-optimized_epubs",      "label": "Web-Optimized"},
-    "integrate_optimized": {"dir": "integrate-optimized_epub", "label": "Integrate-Optimized"},
+    "web":                 {"dir": "web-optimized_epubs",      "label": "Web-Optimized"},
+    "optimized":           {"dir": "optimized_epub",           "label": "Optimized"},
 }
 
 _KEY_TO_LABEL = {
     "original":            VersionLabel.ORIGINAL,
-    "web_optimized":       VersionLabel.WEB_OPTIMIZED,
-    "integrate_optimized": VersionLabel.INTEGRATE_OPTIMIZED,
+    "web":                 VersionLabel.WEB_OPTIMIZED,
+    "optimized":           VersionLabel.OPTIMIZED,
 }
 
 # Populated by discover(); read by reporter to get current display names.
@@ -54,8 +54,8 @@ def _auto_detect_versions(library_base: Path, cfg: dict[str, dict]) -> dict[str,
 
     Heuristic:
       - name contains "original"           → original
-      - name contains "web"                → web_optimized
-      - name contains "integrat"           → integrate_optimized
+      - name contains "web"                → web
+      - name contains "optimized" (without "web")               → optimized
       - remaining dirs fill remaining keys in declaration order
     """
     if not library_base.is_dir():
@@ -70,7 +70,7 @@ def _auto_detect_versions(library_base: Path, cfg: dict[str, dict]) -> dict[str,
         return cfg
 
     result = {k: dict(v) for k, v in cfg.items()}
-    key_order = list(result.keys())  # ["original", "web_optimized", "integrate_optimized"]
+    key_order = list(result.keys())  # ["original", "web", "optimized"]
 
     assigned: dict[str, Path] = {}
     unassigned: list[Path] = []
@@ -79,10 +79,10 @@ def _auto_detect_versions(library_base: Path, cfg: dict[str, dict]) -> dict[str,
         n = d.name.lower()
         if "original" in n and "original" not in assigned:
             assigned["original"] = d
-        elif "web" in n and "web_optimized" not in assigned:
-            assigned["web_optimized"] = d
-        elif "integrat" in n and "integrate_optimized" not in assigned:
-            assigned["integrate_optimized"] = d
+        elif "web" in n and "web" not in assigned:
+            assigned["web"] = d
+        elif "optimized" in n and "web" not in n and "optimized" not in assigned:
+            assigned["optimized"] = d
         else:
             unassigned.append(d)
 
@@ -127,7 +127,7 @@ def load_config(root: Path) -> tuple[Path, dict[str, dict]]:
 
 def _canonical(stem: str, opt_suffixes: list[str]) -> str:
     """Strip known version suffixes to get the canonical book name."""
-    stem = re.sub(r"\s+-\s+integrate-optimized$", "", stem)
+    stem = re.sub(r"\s+-\s+optimized$", "", stem)
     stem = re.sub(r"\s+-\s+original$", "", stem)
     for suffix in opt_suffixes:
         if stem.endswith(suffix):
@@ -176,7 +176,7 @@ def discover(root: Path) -> list[BookTriplet]:
 
     originals   = scanned[VersionLabel.ORIGINAL]
     web_opts    = scanned[VersionLabel.WEB_OPTIMIZED]
-    intg_opts   = scanned[VersionLabel.INTEGRATE_OPTIMIZED]
+    intg_opts   = scanned[VersionLabel.OPTIMIZED]
 
     all_names = sorted(set(originals) | set(web_opts) | set(intg_opts))
 
@@ -185,7 +185,7 @@ def discover(root: Path) -> list[BookTriplet]:
             canonical_name=name,
             original=originals.get(name),
             web_optimized=web_opts.get(name),
-            integrate_optimized=intg_opts.get(name),
+            optimized=intg_opts.get(name),
         )
         for name in all_names
     ]
@@ -208,13 +208,13 @@ def find_triplet(triplets: list[BookTriplet], query: str) -> Optional[BookTriple
 _LABEL_TO_ATTR = {
     VersionLabel.ORIGINAL:            "original",
     VersionLabel.WEB_OPTIMIZED:       "web_optimized",
-    VersionLabel.INTEGRATE_OPTIMIZED: "integrate_optimized",
+    VersionLabel.OPTIMIZED: "optimized",
 }
 
 
 def active_versions(triplets: list[BookTriplet]) -> list[VersionLabel]:
     """Return only the VersionLabels that have at least one book."""
-    order = [VersionLabel.ORIGINAL, VersionLabel.WEB_OPTIMIZED, VersionLabel.INTEGRATE_OPTIMIZED]
+    order = [VersionLabel.ORIGINAL, VersionLabel.WEB_OPTIMIZED, VersionLabel.OPTIMIZED]
     return [
         lbl for lbl in order
         if any(getattr(t, _LABEL_TO_ATTR[lbl]) is not None for t in triplets)
